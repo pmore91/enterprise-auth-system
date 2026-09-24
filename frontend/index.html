@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure Registration</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 480px;
+        margin: 3rem auto;
+        padding: 1.5rem;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1rem;
+      }
+      label {
+        margin-bottom: 0.35rem;
+        font-weight: 600;
+      }
+      input {
+        padding: 0.75rem;
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        padding: 0.85rem;
+        font-size: 1rem;
+      }
+      .error {
+        color: #b00020;
+        margin-top: 0.5rem;
+      }
+      .success {
+        color: #0a7f32;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Register</h1>
+    <form id="registration-form" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" required />
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required />
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required />
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">Confirm Password</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" required />
+      </div>
+
+      <button type="submit">Create Account</button>
+      <div id="message" aria-live="polite"></div>
+    </form>
+
+    <script>
+      const form = document.getElementById('registration-form');
+      const messageBox = document.getElementById('message');
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!username || !email || !password || !confirmPassword) {
+          setMessage('Please complete all required fields.', 'error');
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          setMessage('Password and confirm password must match exactly.', 'error');
+          return;
+        }
+
+        setMessage('Submitting registration...', 'success');
+
+        fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password, confirmPassword })
+        })
+          .then(async (response) => {
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              const message = payload.message || 'Registration failed.';
+              throw new Error(message);
+            }
+            setMessage(payload.message || 'User registered successfully', 'success');
+            form.reset();
+          })
+          .catch((error) => {
+            setMessage(error.message || 'Registration failed.', 'error');
+          });
+      });
+
+      function setMessage(text, type) {
+        messageBox.textContent = text;
+        messageBox.className = type;
+      }
+    </script>
+  </body>
+</html>
