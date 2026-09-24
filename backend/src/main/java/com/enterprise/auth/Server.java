@@ -22,9 +22,18 @@ public class Server implements AutoCloseable {
     }
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(8080, new JdbcUserRepository());
+        int port = 8080;
+        if (args.length > 0) {
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port provided, defaulting to 8080");
+            }
+        }
+
+        Server server = new Server(port, new JdbcUserRepository());
         server.start();
-        System.out.println("Registration server started on http://localhost:8080/api/v1/auth/register");
+        System.out.println("Registration server started on http://localhost:" + port + "/api/v1/auth/register");
     }
 
     public void start() {
@@ -36,6 +45,16 @@ public class Server implements AutoCloseable {
     }
 
     private void handleRegister(HttpExchange exchange) throws IOException {
+        // Explicitly handle browser CORS security checklist pre-flight options queries
+        if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+            exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+            return;
+        }
+
         try {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 sendJson(exchange, 405, new ApiResponse("error", "Method not allowed"));
@@ -46,8 +65,8 @@ public class Server implements AutoCloseable {
             Map<String, String> payload = JsonUtil.parseObject(requestBody);
 
             RegistrationRequest request = new RegistrationRequest();
-            request.setUsername(payload.getOrDefault("username", ""));
-            request.setEmail(payload.getOrDefault("email", ""));
+            request.setUsername(payload.getOrDefault("username", "").trim());
+            request.setEmail(payload.getOrDefault("email", "").trim());
             request.setPassword(payload.getOrDefault("password", ""));
             request.setConfirmPassword(payload.getOrDefault("confirmPassword", ""));
 
@@ -55,6 +74,7 @@ public class Server implements AutoCloseable {
             int statusCode = "success".equals(response.getStatus()) ? 200 : 400;
             sendJson(exchange, statusCode, response);
         } catch (Exception e) {
+            e.printStackTrace();
             sendJson(exchange, 400, new ApiResponse("error", "Malformed request payload"));
         } finally {
             exchange.close();
@@ -68,7 +88,13 @@ public class Server implements AutoCloseable {
                 escapeJson(response.getMessage()));
 
         byte[] body = json.getBytes(StandardCharsets.UTF_8);
+        
+        // Injected core enterprise CORS headers straight into the active HTTP output channel variables
         exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        
         exchange.sendResponseHeaders(statusCode, body.length);
         try (OutputStream outputStream = exchange.getResponseBody()) {
             outputStream.write(body);

@@ -8,15 +8,21 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JdbcUserRepository implements UserRepository {
-    private static final String DEFAULT_URL = "jdbc:h2:mem:enterpriseauth;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE";
+    private static final String LIVE_URL = "jdbc:postgresql://localhost:5432/postgres?options=-c%20timezone=UTC";
+    private static final String DB_USERNAME = System.getenv().getOrDefault("POSTGRES_USER", "postgres");
+    private static final String DB_PASSWORD = System.getenv().getOrDefault("POSTGRES_PASSWORD", System.getenv().getOrDefault("DB_PASSWORD", "dbpassword123"));
     private final String url;
+    private final String username;
+    private final String password;
 
     public JdbcUserRepository() {
-        this(DEFAULT_URL);
+        this(LIVE_URL, DB_USERNAME, DB_PASSWORD);
     }
 
-    public JdbcUserRepository(String url) {
+    public JdbcUserRepository(String url, String username, String password) {
         this.url = url;
+        this.username = username;
+        this.password = password;
         initializeSchema();
     }
 
@@ -37,7 +43,7 @@ public class JdbcUserRepository implements UserRepository {
     }
 
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(url, "sa", "");
+        return DriverManager.getConnection(url, username, password);
     }
 
     @Override

@@ -1,28 +1,34 @@
 package com.enterprise.auth;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class JsonUtil {
-    private static final Pattern STRING_PATTERN = Pattern.compile("\\\"([^\\\"]*(?:\\\\.[^\\\"]*)*)\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private JsonUtil() {
     }
 
     public static Map<String, String> parseObject(String json) {
-        Map<String, String> values = new LinkedHashMap<>();
         if (json == null || json.isBlank()) {
-            return values;
+            return Collections.emptyMap();
         }
 
-        Matcher matcher = STRING_PATTERN.matcher(json);
-        while (matcher.find()) {
-            String key = matcher.group(1).replace("\\\"", "\"").replace("\\\\", "\\");
-            String value = matcher.group(2).replace("\\\"", "\"").replace("\\\\", "\\");
-            values.put(key, value);
+        try {
+            Map<String, Object> rawValues = OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
+            Map<String, String> values = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : rawValues.entrySet()) {
+                Object value = entry.getValue();
+                values.put(entry.getKey(), value == null ? "" : String.valueOf(value));
+            }
+            return values;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Malformed request payload", e);
         }
-        return values;
     }
 }
