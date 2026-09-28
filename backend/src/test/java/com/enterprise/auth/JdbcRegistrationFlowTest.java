@@ -6,14 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class JdbcRegistrationFlowTest {
+
     @Test
     void registerUserViaJdbcRepository() {
         JdbcUserRepository repository = new JdbcUserRepository();
         RegistrationService service = new RegistrationService(repository);
 
+        String testEmail = "alice-" + java.util.UUID.randomUUID() + "@example.com";
+
         RegistrationRequest request = new RegistrationRequest();
         request.setUsername("alice");
-        request.setEmail("alice@example.com");
+        request.setEmail(testEmail);
         request.setPassword("StrongPass123!");
         request.setConfirmPassword("StrongPass123!");
 
